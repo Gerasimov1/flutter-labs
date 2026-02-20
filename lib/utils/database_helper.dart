@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';  
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:io' show Platform;
 import '../models/movie.dart';
 
 class DatabaseHelper {
@@ -8,8 +9,10 @@ class DatabaseHelper {
   static Database? _database;
 
   DatabaseHelper._init() {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
   }
 
   Future<Database> get database async {
@@ -26,6 +29,7 @@ class DatabaseHelper {
       path,
       version: 1,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -44,35 +48,46 @@ class DatabaseHelper {
         rating TEXT
       )
     ''');
+    await db.execute('CREATE INDEX idx_favorites_title ON favorites(title)');
   }
 
-  // CRUD операции
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Миграции для будущих версий
+    }
+  }
+
   Future<int> insertFavorite(Movie movie) async {
     final db = await instance.database;
-    return await db.insert('favorites', movie.toMap(), 
-      conflictAlgorithm: ConflictAlgorithm.replace);
+    return await db.insert(
+      'favorites', 
+      movie.toMap(), 
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Movie>> getFavorites() async {
     final db = await instance.database;
-    final result = await db.query('favorites');
+    final result = await db.query('favorites', orderBy: 'title ASC');
     return result.map((json) => Movie.fromMap(json)).toList();
   }
 
   Future<int> deleteFavorite(String title) async {
     final db = await instance.database;
+
     return await db.delete(
       'favorites',
-      where: 'title = ?',
+      where: 'TRIM(title) = TRIM(?)',
       whereArgs: [title],
     );
   }
 
   Future<bool> isFavorite(String title) async {
     final db = await instance.database;
+
     final result = await db.query(
       'favorites',
-      where: 'title = ?',
+      where: 'TRIM(title) = TRIM(?)',
       whereArgs: [title],
       limit: 1,
     );
@@ -81,6 +96,7 @@ class DatabaseHelper {
 
   Future close() async {
     final db = await instance.database;
-    db.close();
+    await db.close();
+    _database = null;
   }
 }

@@ -9,7 +9,6 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Инициализация зависимостей
   final apiService = MovieApiService();
   final dbHelper = DatabaseHelper.instance;
   final repository = MovieRepository(

@@ -20,8 +20,7 @@ class HomeScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Индикатор загрузки или ошибка
-          if (viewModel.isLoading)
+          if (viewModel.isLoadingMovie)
             const Expanded(
               child: Center(child: CircularProgressIndicator()),
             )
@@ -30,15 +29,26 @@ class HomeScreen extends StatelessWidget {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Ошибка: ${viewModel.error}',
-                    style: const TextStyle(color: Colors.red),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Ошибка: ${viewModel.error}',
+                        style: const TextStyle(color: Colors.red, fontSize: 16),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          viewModel.generateRandomMovie();
+                        },
+                        child: const Text('Повторить'),
+                      ),
+                    ],
                   ),
                 ),
               ),
             )
-          // Карточка текущего фильма
           else if (viewModel.currentMovie != null)
             _buildMovieCard(viewModel.currentMovie!)
           else
@@ -52,8 +62,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-          // Кнопка "Добавить в избранное"
-          if (viewModel.currentMovie != null && !viewModel.isLoading)
+          if (viewModel.currentMovie != null && !viewModel.isLoadingMovie)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: FutureBuilder<bool>(
@@ -79,13 +88,12 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
 
-
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: viewModel.isLoading
+                onPressed: viewModel.isLoadingMovie
                     ? null
                     : () => viewModel.generateRandomMovie(),
                 style: ElevatedButton.styleFrom(
@@ -96,10 +104,19 @@ class HomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: const Text(
-                  '🎲 СЛУЧАЙНЫЙ ФИЛЬМ',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                child: viewModel.isLoadingMovie
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        '🎲 СЛУЧАЙНЫЙ ФИЛЬМ',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ),
@@ -111,14 +128,18 @@ class HomeScreen extends StatelessWidget {
         child: SizedBox(
           width: double.infinity,
           child: ElevatedButton(
-            onPressed: () {
-              viewModel.loadFavorites();
-              Navigator.push(
+            onPressed: () async {
+
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const FavoritesScreen(),
                 ),
               );
+
+              if (result == true) {
+                await viewModel.loadFavorites();
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue[700],
@@ -129,10 +150,13 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             child: Consumer<MovieViewModel>(
-              builder: (context, vm, _) => Text(
-                'Избранное (${vm.favorites.length})',
-                style: const TextStyle(fontSize: 16),
-              ),
+              builder: (context, vm, _) {
+                final count = vm.favorites.length;
+                return Text(
+                  'Избранное ($count)',
+                  style: const TextStyle(fontSize: 16),
+                );
+              },
             ),
           ),
         ),
@@ -152,7 +176,6 @@ class HomeScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // Постер (с сохранением пропорций)
               if (movie.poster != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -160,7 +183,7 @@ class HomeScreen extends StatelessWidget {
                     height: 300,
                     child: Image.network(
                       movie.poster!,
-                      fit: BoxFit.contain, 
+                      fit: BoxFit.contain,
                       errorBuilder: (_, __, ___) => Container(
                         height: 300,
                         color: Colors.grey[300],
@@ -199,8 +222,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 16),
-
-              // Название
               Text(
                 movie.title,
                 style: const TextStyle(
@@ -210,14 +231,10 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
-              // Год и жанр
               Text(
                 '${movie.year ?? 'Неизвестно'} • ${movie.genre ?? 'Неизвестно'}',
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
-
-              // Рейтинг (если есть)
               if (movie.rating != null && movie.rating != 'N/A') ...[
                 const SizedBox(height: 8),
                 Container(
@@ -232,8 +249,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ],
-
-              // Режиссёр (если есть)
               if (movie.director != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -242,8 +257,6 @@ class HomeScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ],
-
-              // Описание (ограничено 3 строками)
               if (movie.plot != null) ...[
                 const SizedBox(height: 12),
                 const Text(
@@ -269,18 +282,20 @@ class HomeScreen extends StatelessWidget {
   void _addToFavorites(BuildContext context, MovieViewModel viewModel) {
     if (viewModel.currentMovie != null) {
       viewModel.addToFavorites(viewModel.currentMovie!).then((success) {
-        if (success) {
+        if (success && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ Фильм добавлен в избранное!'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
             ),
           );
-        } else {
+        } else if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('⚠️ Фильм уже в избранном!'),
               backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
             ),
           );
         }

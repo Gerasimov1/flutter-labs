@@ -7,70 +7,101 @@ class MovieViewModel extends ChangeNotifier {
   
   Movie? _currentMovie;
   List<Movie> _favorites = [];
-  bool _isLoading = false;
+  
+  bool _isLoadingMovie = false;
+  bool _isLoadingFavorites = false;
   String? _error;
 
   MovieViewModel({required MovieRepository repository})
       : _repository = repository;
 
-  // Геттеры
   Movie? get currentMovie => _currentMovie;
   List<Movie> get favorites => _favorites;
-  bool get isLoading => _isLoading;
+  bool get isLoadingMovie => _isLoadingMovie;
+  bool get isLoadingFavorites => _isLoadingFavorites;
   String? get error => _error;
 
-  // Загрузить избранные фильмы
   Future<void> loadFavorites() async {
-    _isLoading = true;
+    _isLoadingFavorites = true;
+    _error = null;
     notifyListeners();
     
     try {
       _favorites = await _repository.getFavorites();
       _error = null;
+      if (kDebugMode) {
+        print('✅ Загружено избранное: ${_favorites.length} фильмов');
+      }
     } catch (e) {
-      _error = 'Ошибка загрузки: $e';
+      _error = 'Ошибка загрузки избранного: $e';
+      if (kDebugMode) print('❌ $e');
     } finally {
-      _isLoading = false;
+      _isLoadingFavorites = false;
       notifyListeners();
     }
   }
 
-  // Сгенерировать случайный фильм
   Future<void> generateRandomMovie() async {
-    _isLoading = true;
     _error = null;
+    _isLoadingMovie = true;
     notifyListeners();
     
     try {
       _currentMovie = await _repository.getRandomMovie();
+      _error = null;
+      if (kDebugMode) {
+        print('✅ Загружен фильм: ${_currentMovie?.title}');
+      }
     } catch (e) {
       _error = 'Ошибка получения фильма: $e';
+      if (kDebugMode) print('❌ $e');
     } finally {
-      _isLoading = false;
+      _isLoadingMovie = false;
       notifyListeners();
     }
   }
 
-  // Добавить в избранное
   Future<bool> addToFavorites(Movie movie) async {
-    final success = await _repository.addToFavorites(movie);
-    if (success) {
-      await loadFavorites(); // Обновить список
+    _error = null;
+    notifyListeners();
+    
+    try {
+      final success = await _repository.addToFavorites(movie);
+      if (success) {
+        await loadFavorites();
+      }
+      return success;
+    } catch (e) {
+      _error = 'Ошибка добавления: $e';
+      if (kDebugMode) print('❌ $e');
+      notifyListeners();
+      return false;
     }
-    return success;
   }
 
-  // Удалить из избранного
   Future<bool> removeFromFavorites(String title) async {
-    final success = await _repository.removeFromFavorites(title);
-    if (success) {
-      await loadFavorites(); // Обновить список
+    _error = null;
+    notifyListeners();
+    
+    try {
+      final success = await _repository.removeFromFavorites(title);
+      if (success) {
+        await loadFavorites();
+      }
+      return success;
+    } catch (e) {
+      _error = 'Ошибка удаления: $e';
+      if (kDebugMode) print('❌ $e');
+      notifyListeners();
+      return false;
     }
-    return success;
   }
 
-  // Проверить, в избранном ли фильм
   Future<bool> isFavorite(String title) async {
-    return await _repository.isFavorite(title);
+    try {
+      return await _repository.isFavorite(title);
+    } catch (_) {
+      return false;
+    }
   }
 }

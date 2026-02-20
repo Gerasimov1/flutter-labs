@@ -12,34 +12,30 @@ class MovieRepository {
   })  : _apiService = apiService,
         _dbHelper = dbHelper;
 
-  // Получить случайный фильм (из API)
   Future<Movie> getRandomMovie() async {
     return await _apiService.getRandomMovie();
   }
 
-  // Получить избранные фильмы (из БД)
   Future<List<Movie>> getFavorites() async {
     return await _dbHelper.getFavorites();
   }
 
-  // Добавить в избранное (в БД)
   Future<bool> addToFavorites(Movie movie) async {
-    // Проверка на дубликат
-    if (await _dbHelper.isFavorite(movie.title)) {
+
+    if (await _dbHelper.isFavorite(movie.title.trim())) {
       return false;
     }
     await _dbHelper.insertFavorite(movie);
     return true;
   }
 
-  // Удалить из избранного (из БД)
   Future<bool> removeFromFavorites(String title) async {
-    final result = await _dbHelper.deleteFavorite(title);
+
+    final result = await _dbHelper.deleteFavorite(title.trim());
     return result > 0;
   }
 
-  // Проверить, в избранном ли фильм
   Future<bool> isFavorite(String title) async {
-    return await _dbHelper.isFavorite(title);
+    return await _dbHelper.isFavorite(title.trim());
   }
 }

@@ -1,84 +1,76 @@
-import 'dart:convert';
 import 'dart:math';
-import 'package:http/http.dart' as http;
 import '../models/movie.dart';
 
 class MovieApiService {
-  static const String _apiKey = '67f0325f';
-  static const String _baseUrl = 'https://www.omdbapi.com';
-
-  // Получение случайного фильма (из тысяч!)
   Future<Movie> getRandomMovie() async {
-    try {
-      // Список популярных запросов для поиска
-      final List<String> searchTerms = [
-        'action', 'comedy', 'drama', 'horror', 'sci-fi',
-        'thriller', 'romance', 'adventure', 'fantasy', 'crime',
-        'animation', 'mystery', 'war', 'western', 'musical',
-        '2023', '2022', '2021', '2020', '2019',
-        'marvel', 'dc', 'disney', 'pixar', 'studio ghibli',
-      ];
+    // Имитация задержки сети для реалистичного UX
+    await Future.delayed(const Duration(milliseconds: 800));
 
-      // Выбираем случайный поисковый запрос
-      final random = Random();
-      final searchTerm = searchTerms[random.nextInt(searchTerms.length)];
+    final mockMovies = [
+      {
+        'Title': 'The Shawshank Redemption',
+        'Year': '1994',
+        'Genre': 'Drama',
+        'Poster': 'https://m.media-amazon.com/images/M/MV5BMDFkYTc0MGEtZmNhMC00ZDIzLWFmNTEtODM1ZmRlYWMwMWFmXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
+        'Plot': 'Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.',
+        'imdbID': 'tt0111161',
+        'Director': 'Frank Darabont',
+        'Actors': 'Tim Robbins, Morgan Freeman',
+        'imdbRating': '9.3',
+      },
+      {
+        'Title': 'The Godfather',
+        'Year': '1972',
+        'Genre': 'Crime, Drama',
+        'Poster': 'https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_SX300.jpg',
+        'Plot': 'The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.',
+        'imdbID': 'tt0068646',
+        'Director': 'Francis Ford Coppola',
+        'Actors': 'Marlon Brando, Al Pacino',
+        'imdbRating': '9.2',
+      },
+      {
+        'Title': 'The Dark Knight',
+        'Year': '2008',
+        'Genre': 'Action, Crime, Drama',
+        'Poster': 'https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_SX300.jpg',
+        'Plot': 'When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests.',
+        'imdbID': 'tt0468569',
+        'Director': 'Christopher Nolan',
+        'Actors': 'Christian Bale, Heath Ledger',
+        'imdbRating': '9.0',
+      },
+      {
+        'Title': 'Inception',
+        'Year': '2010',
+        'Genre': 'Action, Sci-Fi, Thriller',
+        'Poster': 'https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_SX300.jpg',
+        'Plot': 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea.',
+        'imdbID': 'tt1375666',
+        'Director': 'Christopher Nolan',
+        'Actors': 'Leonardo DiCaprio, Joseph Gordon-Levitt',
+        'imdbRating': '8.8',
+      },
+      {
+        'Title': 'Interstellar',
+        'Year': '2014',
+        'Genre': 'Adventure, Drama, Sci-Fi',
+        'Poster': 'https://m.media-amazon.com/images/M/MV5BZjdkOTU3MDktN2IxOS00OGEyLWFmMjktY2FiMmZkNWIyODZiXkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_SX300.jpg',
+        'Plot': 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity\'s survival.',
+        'imdbID': 'tt0816692',
+        'Director': 'Christopher Nolan',
+        'Actors': 'Matthew McConaughey, Anne Hathaway',
+        'imdbRating': '8.6',
+      },
+    ];
 
-      // Ищем фильмы по запросу
-      final searchResponse = await http.get(
-        Uri.parse('$_baseUrl/?apikey=$_apiKey&s=$searchTerm&type=movie'),
-      ).timeout(const Duration(seconds: 10));
-
-      if (searchResponse.statusCode == 200) {
-        final searchData = json.decode(searchResponse.body);
-        
-        if (searchData['Response'] == 'True' && searchData['Search'] != null) {
-          final List<dynamic> results = searchData['Search'];
-          
-          // Выбираем случайный фильм из результатов поиска
-          final randomMovie = results[random.nextInt(results.length)];
-          final imdbId = randomMovie['imdbID'];
-
-          // Получаем полную информацию о фильме
-          final movieResponse = await http.get(
-            Uri.parse('$_baseUrl/?apikey=$_apiKey&i=$imdbId&plot=full'),
-          ).timeout(const Duration(seconds: 10));
-
-          if (movieResponse.statusCode == 200) {
-            final movieData = json.decode(movieResponse.body);
-            if (movieData['Response'] == 'True') {
-              return Movie.fromJson(movieData);
-            }
-          }
-        }
-      }
-
-      throw Exception('Не удалось получить случайный фильм');
-    } catch (e) {
-      throw Exception('Ошибка: $e');
-    }
+    final random = Random();
+    final randomMovie = mockMovies[random.nextInt(mockMovies.length)];
+    return Movie.fromJson(randomMovie);
   }
 
-  // Поиск фильмов по названию
   Future<List<Movie>> searchMovies(String query) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/?apikey=$_apiKey&s=$query&type=movie'),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        if (data['Response'] == 'True' && data['Search'] != null) {
-          final List<dynamic> results = data['Search'];
-          return results.map((json) => Movie.fromJson(json)).toList();
-        } else {
-          return [];
-        }
-      } else {
-        throw Exception('Ошибка API: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Ошибка поиска: $e');
-    }
+    await Future.delayed(const Duration(milliseconds: 500));
+    return await getRandomMovie().then((movie) => [movie]);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/movie_viewmodel.dart';
+import '../models/movie.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -10,25 +11,19 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  bool _isLoading = true;
+  bool _hasLoaded = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-    });
-    
-    final viewModel = Provider.of<MovieViewModel>(context, listen: false);
-    await viewModel.loadFavorites();
-    
-    setState(() {
-      _isLoading = false;
-    });
+    if (!_hasLoaded) {
+      _hasLoaded = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final viewModel = Provider.of<MovieViewModel>(context, listen: false);
+        viewModel.loadFavorites();
+      });
+    }
   }
 
   @override
@@ -43,46 +38,68 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : Consumer<MovieViewModel>(
-                    builder: (context, viewModel, _) {
-                      if (viewModel.error != null) {
-                        return Center(
-                          child: Text(
-                            'Ошибка: ${viewModel.error}',
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        );
-                      }
-                      if (viewModel.favorites.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'В избранном пока нет фильмов\nДобавьте фильм с главного экрана!',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        );
-                      }
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: viewModel.favorites.length,
-                        itemBuilder: (context, index) {
-                          final movie = viewModel.favorites[index];
-                          return _buildFavoriteCard(movie, viewModel, context);
-                        },
-                      );
+            child: Consumer<MovieViewModel>(
+              builder: (context, viewModel, _) {
+                if (viewModel.isLoadingFavorites && viewModel.favorites.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (viewModel.error != null) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Ошибка: ${viewModel.error}',
+                          style: const TextStyle(color: Colors.red),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => viewModel.loadFavorites(),
+                          child: const Text('Повторить'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                
+                if (viewModel.favorites.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'В избранном пока нет фильмов\nДобавьте фильм с главного экрана!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  );
+                }
+                
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await viewModel.loadFavorites();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: viewModel.favorites.length,
+                    itemBuilder: (context, index) {
+                      final movie = viewModel.favorites[index];
+                      return _buildFavoriteCard(movie, viewModel, context);
                     },
                   ),
+                );
+              },
+            ),
           ),
-
           Container(
             padding: const EdgeInsets.all(16.0),
             color: Colors.white,
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+
+                  Navigator.pop(context, true);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[700],
                   foregroundColor: Colors.white,
@@ -104,7 +121,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _buildFavoriteCard(
-    dynamic movie,
+    Movie movie,
     MovieViewModel viewModel,
     BuildContext context,
   ) {
@@ -167,9 +184,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      await viewModel.removeFromFavorites(title);
-      if (mounted) {
+    if (confirmed == true && mounted) {
+      final success = await viewModel.removeFromFavorites(title);
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('✅ "$title" удалён из избранного'),
@@ -177,6 +194,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
+
+        await viewModel.loadFavorites();
       }
     }
   }

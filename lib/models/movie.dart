@@ -21,13 +21,14 @@ class Movie {
     this.rating,
   });
 
-  // Из JSON (API)
   factory Movie.fromJson(Map<String, dynamic> json) {
     return Movie(
       title: json['Title'] ?? 'Неизвестно',
       year: json['Year'],
       genre: json['Genre'],
-      poster: json['Poster'] != 'N/A' ? json['Poster'] : null,
+      poster: json['Poster'] != 'N/A' 
+          ? json['Poster']?.toString().trim() 
+          : null,
       plot: json['Plot'],
       imdbId: json['imdbID'],
       director: json['Director'],
@@ -36,10 +37,9 @@ class Movie {
     );
   }
 
-  // В Map (для БД)
   Map<String, dynamic> toMap() {
     return {
-      'title': title,
+      'title': title.trim(),
       'year': year,
       'genre': genre,
       'poster': poster,
@@ -51,7 +51,6 @@ class Movie {
     };
   }
 
-  // Из Map (для БД)
   factory Movie.fromMap(Map<String, dynamic> map) {
     return Movie(
       title: map['title'] ?? 'Неизвестно',
@@ -69,8 +68,10 @@ class Movie {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Movie && runtimeType == other.runtimeType && imdbId == other.imdbId;
+      other is Movie && 
+      runtimeType == other.runtimeType && 
+      imdbId == other.imdbId;
 
   @override
-  int get hashCode => imdbId.hashCode;
+  int get hashCode => imdbId?.hashCode ?? title.hashCode;
 }
